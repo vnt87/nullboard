@@ -1,0 +1,44 @@
+name: Minify HTML
+
+on:
+  push:
+    paths:
+      - 'nullboard.html'
+  pull_request:
+    paths:
+      - 'nullboard.html'
+
+jobs:
+  minify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install minifier
+        run: npm install -g html-minifier-terser
+
+      - name: Minify HTML
+        run: |
+          html-minifier-terser --collapse-whitespace --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype --minify-css true --minify-js true --input-dir . --output-dir . --file-ext html --input nullboard.html --output index.html
+
+      - name: Check if index.html changed
+        id: verify_diff
+        run: |
+          git add index.html
+          git diff --staged --quiet index.html || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit minified version
+        if: steps.verify_diff.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "chore: minify nullboard.html to index.html" index.html
+          git push
